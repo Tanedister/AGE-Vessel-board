@@ -11,6 +11,8 @@ from datetime import datetime, timedelta, timezone
 BKK = timezone(timedelta(hours=7))
 ORDER = {"Completed": 0, "Discharging": 1, "At sea": 2, "Loading": 3, "Pre-arrival": 4}
 STAGE_CLS = {"Pre-arrival": "pre", "Loading": "load", "At sea": "sea", "Discharging": "dis", "Completed": "done"}
+STAGE_LABEL = {"At sea": "Sailing"}
+STATUS_LABEL = {"Watch": "Monitor"}
 MILES = ["eta_lp", "comm_l", "comp_l", "etd_lp", "eta_dp", "comm_d", "comp_d"]
 HEAD = ["ETA LP", "COMM L", "COMP L", "ETD LP", "ETA DP", "COMM D", "COMP D"]
 e = lambda s: html.escape(str(s if s is not None else ""))
@@ -78,18 +80,19 @@ def main(src, dst):
             cell(v.get(k)).replace("<td ", '<td style="background:#2a2614" ', 1) if i == ni else cell(v.get(k))
             for i, k in enumerate(MILES)
         )
+        why = f'<div class="why">{e(v.get("reason"))}</div>' if flag in ("watch", "alert") and v.get("reason") else ""
         rows.append(
             f'<tr class="{flag}"><td class="v"><b>{"" if tb else "MV "}{e(v.get("vessel"))}</b> <em>{e(v.get("owners"))}</em>'
             f'<div class="m">{e(v.get("shipment") or "—")} · {e(v.get("laycan") or "—")}</div>'
             f'<div class="rt">{e(v.get("load_port") or "—")} &rarr; {e(v.get("disch_port") or "—")}</div></td>'
-                        f'<td><span class="sg {STAGE_CLS.get(v.get("stage"), "pre")}">{e(v.get("stage") or "—")}</span></td>'
+                        f'<td><span class="sg {STAGE_CLS.get(v.get("stage"), "pre")}">{e(STAGE_LABEL.get(v.get("stage"), v.get("stage")) or "—")}</span></td>'
             f'{miles}<td class="q">{qty}</td>'
-            f'<td><span class="st {flag}">{e(v.get("status") or "—")}</span></td>'
-            f'<td class="r">{e(v.get("remark") or "")}</td></tr>'
+            f'<td><span class="st {flag}">{e(STATUS_LABEL.get(v.get("status"), v.get("status")) or "—")}</span></td>'
+            f'<td class="r">{why}{e(v.get("remark") or "")}</td></tr>'
         )
     if not rows:
         rows.append('<tr><td colspan="12" class="nil" style="padding:40px;text-align:center">ไม่มีเรือ active</td></tr>')
-    attn_html = " &nbsp;•&nbsp; ".join(f'<b>{e(v.get("vessel"))}</b> {e(v.get("remark") or v.get("status"))}' for v in attn) or "ทุกลำ On track"
+    attn_html = " &nbsp;•&nbsp; ".join(f'<b>{e(v.get("vessel"))}</b> {e(v.get("reason") or v.get("remark") or v.get("status"))}' for v in attn) or "ทุกลำ On track"
     notice = st.get("notice") or ""
     page = f"""<!doctype html><html lang="th"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
@@ -116,7 +119,7 @@ tr.watch td.v{{border-left:5px solid #f2b84b}} tr.alert td.v{{border-left:5px so
 .bar{{height:9px;background:#1f3448;border-radius:3px;margin-top:4px}} .bar i{{display:block;height:9px;background:#2fb37a;border-radius:3px}}
 .st{{padding:4px 10px;border-radius:14px;font-weight:bold;font-size:18px;white-space:nowrap}}
 .st.ok{{background:#12352a;color:#3ccf7e}} .st.watch{{background:#3a2f12;color:#f2b84b}} .st.alert{{background:#3d1717;color:#ff5b5b}} .st.done{{background:#1d2a36;color:#c8d3dd}}
-.r{{color:#b8c6d3;font-size:18px}} .rt{{color:#b8c6d3;font-size:17px;margin-top:2px}}
+.r{{color:#b8c6d3;font-size:18px}} .why{{color:#f2b84b;font-weight:bold;margin-bottom:4px}} .rt{{color:#b8c6d3;font-size:17px;margin-top:2px}}
 .a{{margin-top:12px;background:#112131;padding:14px 18px;font-size:22px}} .a b{{color:#f2b84b}}
 .n{{background:#3a2f12;color:#f2b84b;font-size:22px;padding:10px 16px;margin-bottom:10px}}
 .f{{color:#7f94a8;font-size:16px;margin-top:8px}}
@@ -125,7 +128,7 @@ tr.watch td.v{{border-left:5px solid #f2b84b}} tr.alert td.v{{border-left:5px so
 <div class="u">Last updated <b>{e(u)}</b><br>Updates 09:00 · 12:00 · 15:00 (workdays) · page reloads every 5 min</div></div>
 {f'<div class="n">{e(notice)}</div>' if notice else ''}
 <div class="c"><div>Active<b>{sum(1 for v in vs if v.get("stage") != "Completed")}</b></div><div>Pre-arrival<b>{cnt("Pre-arrival")}</b></div>
-<div>Loading<b>{cnt("Loading")}</b></div><div>At sea<b>{cnt("At sea")}</b></div><div>Discharging<b>{cnt("Discharging")}</b></div>
+<div>Loading<b>{cnt("Loading")}</b></div><div>Sailing<b>{cnt("At sea")}</b></div><div>Discharging<b>{cnt("Discharging")}</b></div>
 <div>Completed<b>{cnt("Completed")}</b></div><div style="border-color:#ff5b5b">Attention<b>{len(attn)}</b></div></div>
 <table><tr><th>Vessel / Route</th><th>Stage</th>{''.join(f'<th>{h}</th>' for h in HEAD)}<th>Cargo MT</th><th>Status</th><th>Remark</th></tr>
 {''.join(rows)}</table>
