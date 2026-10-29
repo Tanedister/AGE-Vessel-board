@@ -52,6 +52,35 @@ def next_idx(v):
     return -1
 
 
+def dh(h):
+    h = num(h)
+    if h is None:
+        return None
+    m = int(round(abs(h) * 60))
+    d, r = divmod(m, 1440)
+    return f"{d}d {r // 60:02d}h" if d else f"{r // 60}h {r % 60:02d}m"
+
+
+def laytime_line(v):
+    lt = v.get("laytime") or {}
+    if v.get("stage") not in ("Loading", "Discharging") or not lt:
+        return ""
+    used, rain, left, allowed = dh(lt.get("used_h")), dh(lt.get("rain_h")), num(lt.get("left_h")), dh(lt.get("allowed_h"))
+    parts = []
+    if used:
+        parts.append(f"Laytime used <b>{used}</b>" + (f" / {allowed}" if allowed else ""))
+    if rain and num(lt.get("rain_h")):
+        parts.append(f"rain {rain}")
+    if left is not None:
+        parts.append(f'<b class="ov">On demurrage {dh(left)}</b>' if left < 0 else f"left <b>{dh(left)}</b>")
+    elif used:
+        parts.append("terms TBC")
+    if not parts:
+        return ""
+    basis = e(lt.get("basis") or "")
+    return f'<div class="lt">{" · ".join(parts)}{f" <span>({basis})</span>" if basis else ""}</div>'
+
+
 def main(src, dst):
     st = json.load(open(src, encoding="utf-8"))
     vs = sorted(st.get("vessels", []), key=lambda v: ORDER.get(v.get("stage"), 9))
@@ -88,7 +117,7 @@ def main(src, dst):
                         f'<td><span class="sg {STAGE_CLS.get(v.get("stage"), "pre")}">{e(STAGE_LABEL.get(v.get("stage"), v.get("stage")) or "—")}</span></td>'
             f'{miles}<td class="q">{qty}</td>'
             f'<td><span class="st {flag}">{e(STATUS_LABEL.get(v.get("status"), v.get("status")) or "—")}</span></td>'
-            f'<td class="r">{why}{e(v.get("remark") or "")}</td></tr>'
+            f'<td class="r">{why}{laytime_line(v)}{e(v.get("remark") or "")}</td></tr>'
         )
     if not rows:
         rows.append('<tr><td colspan="12" class="nil" style="padding:40px;text-align:center">ไม่มีเรือ active</td></tr>')
@@ -107,7 +136,7 @@ h1{{margin:0;font-size:46px;letter-spacing:2px}} h1 span{{background:#2fb37a;col
 .u{{color:#7f94a8;text-align:right;font-size:20px}} .u b{{color:#f2b84b;font-size:28px}}
 .c{{display:flex;gap:8px;margin-bottom:12px;flex-wrap:wrap}} .c div{{background:#112131;padding:6px 14px;border-left:4px solid #7f94a8;color:#7f94a8;text-transform:uppercase;font-size:19px}}
 .c b{{color:#e8eef4;font-size:36px;margin-left:8px}}
-table{{border-collapse:collapse;width:100%;table-layout:auto;background:#112131}} td.r{{width:15%}} td.v{{width:22%}}
+table{{border-collapse:collapse;width:100%;table-layout:auto;background:#112131}} td.r{{width:18%}} td.v{{width:21%}}
 th{{color:#7f94a8;font-size:17px;text-align:left;padding:10px 8px;border-bottom:2px solid #1f3448;text-transform:uppercase;white-space:nowrap}}
 td{{padding:13px 8px;border-bottom:1px solid #1f3448;vertical-align:middle}}
 tr.watch td.v{{border-left:5px solid #f2b84b}} tr.alert td.v{{border-left:5px solid #ff5b5b}} tr.ok td.v{{border-left:5px solid #3ccf7e}} tr.done td.v{{border-left:5px solid #5f7387}}
@@ -119,7 +148,7 @@ tr.watch td.v{{border-left:5px solid #f2b84b}} tr.alert td.v{{border-left:5px so
 .bar{{height:9px;background:#1f3448;border-radius:3px;margin-top:4px}} .bar i{{display:block;height:9px;background:#2fb37a;border-radius:3px}}
 .st{{padding:4px 10px;border-radius:14px;font-weight:bold;font-size:18px;white-space:nowrap}}
 .st.ok{{background:#12352a;color:#3ccf7e}} .st.watch{{background:#3a2f12;color:#f2b84b}} .st.alert{{background:#3d1717;color:#ff5b5b}} .st.done{{background:#1d2a36;color:#c8d3dd}}
-.r{{color:#b8c6d3;font-size:18px}} .why{{color:#f2b84b;font-weight:bold;margin-bottom:4px}} .rt{{color:#b8c6d3;font-size:17px;margin-top:2px}}
+.r{{color:#b8c6d3;font-size:18px}} .why{{color:#f2b84b;font-weight:bold;margin-bottom:4px}} .lt{{color:#e8eef4;margin-bottom:4px}} .lt span{{color:#7f94a8}} .lt .ov{{color:#ff5b5b}} .rt{{color:#b8c6d3;font-size:17px;margin-top:2px}}
 .a{{margin-top:12px;background:#112131;padding:14px 18px;font-size:22px}} .a b{{color:#f2b84b}}
 .n{{background:#3a2f12;color:#f2b84b;font-size:22px;padding:10px 16px;margin-bottom:10px}}
 .f{{color:#7f94a8;font-size:16px;margin-top:8px}}
