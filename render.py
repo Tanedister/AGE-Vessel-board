@@ -121,6 +121,17 @@ def main(src, dst):
         )
     if not rows:
         rows.append('<tr><td colspan="12" class="nil" style="padding:40px;text-align:center">ไม่มีเรือ active</td></tr>')
+    def hrs(x):
+        n = num(x) or 0
+        return f"{n:,.1f}" if n else "&mdash;"
+    lost_rows = []
+    for l in st.get("lost_hours", []):
+        sh, rc, ow, wx = (num(l.get(k)) or 0 for k in ("shipper", "receiver", "owners", "weather"))
+        if not (sh or rc or ow or wx):
+            continue
+        lost_rows.append(f'<tr><td>{e(l.get("vessel"))}</td><td class="nm">{hrs(sh)}</td><td class="nm">{hrs(rc)}</td>'
+                         f'<td class="nm">{hrs(ow)}</td><td class="nm">{hrs(wx)}</td><td class="nm dd">{hrs(ow + wx)}</td></tr>')
+    lost_html = "".join(lost_rows) or '<tr><td colspan="6" class="nil">No lost time recorded</td></tr>'
     attn_html = " &nbsp;•&nbsp; ".join(f'<b>{e(v.get("vessel"))}</b> {e(v.get("reason") or v.get("remark") or v.get("status"))}' for v in attn) or "ทุกลำ On track"
     notice = st.get("notice") or ""
     page = f"""<!doctype html><html lang="th"><head><meta charset="utf-8">
@@ -149,7 +160,11 @@ tr.watch td.v{{border-left:5px solid #f2b84b}} tr.alert td.v{{border-left:5px so
 .st{{padding:4px 10px;border-radius:14px;font-weight:bold;font-size:18px;white-space:nowrap}}
 .st.ok{{background:#12352a;color:#3ccf7e}} .st.watch{{background:#3a2f12;color:#f2b84b}} .st.alert{{background:#3d1717;color:#ff5b5b}} .st.done{{background:#1d2a36;color:#c8d3dd}}
 .r{{color:#b8c6d3;font-size:18px}} .why{{color:#f2b84b;font-weight:bold;margin-bottom:4px}} .lt{{color:#e8eef4;margin-bottom:4px}} .lt span{{color:#7f94a8}} .lt .ov{{color:#ff5b5b}} .rt{{color:#b8c6d3;font-size:17px;margin-top:2px}}
-.a{{margin-top:12px;background:#112131;padding:14px 18px;font-size:22px}} .a b{{color:#f2b84b}}
+.bt{{display:grid;grid-template-columns:1fr 1.15fr;gap:12px;margin-top:12px}}
+.a{{background:#112131;padding:14px 18px;font-size:20px;line-height:1.45}} .a b{{color:#f2b84b}}
+.lo{{background:#112131;padding:12px 16px}} .lh{{color:#7f94a8;text-transform:uppercase;font-size:15px;margin-bottom:4px}}
+.lo table{{background:none;font-size:17px}} .lo th{{font-size:13px;text-align:right;padding:4px 8px;border-bottom:1px solid #1f3448}} .lo td{{padding:5px 8px;border-bottom:0}}
+.lo td.nm{{text-align:right;font-family:Consolas,monospace}} .lo td.dd{{color:#3ccf7e;font-weight:bold}} .lk{{color:#7f94a8;font-size:13px;margin-top:4px}}
 .n{{background:#3a2f12;color:#f2b84b;font-size:22px;padding:10px 16px;margin-bottom:10px}}
 .f{{color:#7f94a8;font-size:16px;margin-top:8px}}
 </style></head><body><div class="w">
@@ -161,7 +176,9 @@ tr.watch td.v{{border-left:5px solid #f2b84b}} tr.alert td.v{{border-left:5px so
 <div>Completed<b>{cnt("Completed")}</b></div><div style="border-color:#ff5b5b">Attention<b>{len(attn)}</b></div></div>
 <table><tr><th>Vessel / Route</th><th>Stage</th>{''.join(f'<th>{h}</th>' for h in HEAD)}<th>Cargo MT</th><th>Status</th><th>Remark</th></tr>
 {''.join(rows)}</table>
-<div class="a">Needs attention: {attn_html}</div>
+<div class="bt"><div class="a">Needs attention: {attn_html}</div>
+<div class="lo"><div class="lh">Lost time (hours)</div><table><tr><th style="text-align:left">Vessel</th><th>Shipper</th><th>Receiver</th><th>Owners</th><th>Weather</th><th>Deductible</th></tr>{lost_html}</table>
+<div class="lk">Shipper = load-port waiting, claim back-to-back · Receiver = counts in AGE laytime · Deductible = weather + owners' stoppage, not counted</div></div></div>
 <div class="f"><span class="est">Amber</span> = estimate · shaded = next milestone · port local time · source: agent / owners reports · Powered by Claude AI</div>
 </div></body></html>"""
     import re
