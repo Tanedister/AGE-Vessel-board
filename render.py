@@ -42,6 +42,34 @@ def cell(v):
     return f'<td class="t">{two_line(s)}</td>'
 
 
+def actual(x):
+    s = str(x or "").strip()
+    return bool(s) and not s.startswith("E ")
+
+
+# Display stage (Aum 2 Nov 2026): Sailing -> Ballast / Laden; not yet commenced -> Waiting Load / Waiting Discharge
+SHOW_ORDER = ["Pre-arrival", "Ballast", "Waiting Load", "Loading", "Laden", "Waiting Discharge", "Discharging", "Completed"]
+SHOW_CLS = {"Pre-arrival": "pre", "Ballast": "bal", "Waiting Load": "wt", "Loading": "load", "Laden": "sea",
+            "Waiting Discharge": "wt", "Discharging": "dis", "Completed": "done"}
+
+
+def show_stage(v):
+    st = v.get("stage")
+    if st == "Completed":
+        return "Completed"
+    if st == "Discharging":
+        return "Discharging" if actual(v.get("comm_d")) else "Waiting Discharge"
+    if st == "Loading":
+        return "Loading" if actual(v.get("comm_l")) else "Waiting Load"
+    if st == "At sea":
+        if actual(v.get("eta_dp")) and not actual(v.get("comm_d")):
+            return "Waiting Discharge"
+        return "Laden" if (actual(v.get("comm_l")) or actual(v.get("etd_lp"))) else "Ballast"
+    if st == "Pre-arrival" and actual(v.get("eta_lp")):
+        return "Waiting Load"
+    return st or "—"
+
+
 def next_idx(v):
     if v.get("stage") == "Completed":
         return -1
@@ -114,7 +142,7 @@ def main(src, dst):
             f'<tr class="{flag}"><td class="v"><b>{"" if tb else "MV "}{e(v.get("vessel"))}</b> <em>{e(v.get("owners"))}</em>'
             f'<div class="m">{e(v.get("shipment") or "—")} · {e(v.get("laycan") or "—")}</div>'
             f'<div class="rt">{e(v.get("load_port") or "—")} &rarr; {e(v.get("disch_port") or "—")}</div></td>'
-                        f'<td><span class="sg {STAGE_CLS.get(v.get("stage"), "pre")}">{e(STAGE_LABEL.get(v.get("stage"), v.get("stage")) or "—")}</span></td>'
+                        f'<td><span class="sg {SHOW_CLS.get(show_stage(v), "pre")}">{e(show_stage(v))}</span></td>'
             f'{miles}<td class="q">{qty}</td>'
             f'<td><span class="st {flag}">{e(STATUS_LABEL.get(v.get("status"), v.get("status")) or "—")}</span></td>'
             f'<td class="r">{why}{laytime_line(v)}{e(v.get("remark") or "")}</td></tr>'
@@ -134,6 +162,8 @@ def main(src, dst):
     lost_html = "".join(lost_rows) or '<tr><td colspan="6" class="nil">No lost time recorded</td></tr>'
     attn_html = " &nbsp;•&nbsp; ".join(f'<b>{e(v.get("vessel"))}</b> {e(v.get("reason") or v.get("remark") or v.get("status"))}' for v in attn) or "ทุกลำ On track"
     notice = st.get("notice") or ""
+    shown = [show_stage(v) for v in vs]
+    chips = "".join(f'<div>{k}<b>{shown.count(k)}</b></div>' for k in SHOW_ORDER if shown.count(k) or k in ("Loading", "Discharging"))
     page = f"""<!doctype html><html lang="th"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <meta http-equiv="refresh" content="300">
@@ -154,7 +184,7 @@ tr.watch td.v{{border-left:5px solid #f2b84b}} tr.alert td.v{{border-left:5px so
 .v b{{font-size:26px}} .v em{{color:#7f94a8;font-style:normal;font-size:18px}} .m{{color:#7f94a8;font-size:16px;font-family:monospace}}
 .t{{font-family:Consolas,monospace;white-space:nowrap;font-size:21px;line-height:1.25}} .tm{{opacity:.8}} .est{{color:#f2b84b;font-weight:bold}} .nil{{color:#3a5068}}
 .sg{{border:1px solid;padding:3px 8px;border-radius:4px;font-size:18px;font-weight:bold;text-transform:uppercase;white-space:nowrap}}
-.pre{{color:#8a9bb0}} .load{{color:#2fc4b2}} .sea{{color:#4aa3ff}} .dis{{color:#a98bff}} .done{{color:#9fb0c0}}
+.pre{{color:#8a9bb0}} .load{{color:#2fc4b2}} .sea{{color:#4aa3ff}} .bal{{color:#8fb8de}} .wt{{color:#f2b84b}} .dis{{color:#a98bff}} .done{{color:#9fb0c0}}
 .q{{font-family:Consolas,monospace;white-space:nowrap;font-size:21px}} .q span{{color:#7f94a8}}
 .bar{{height:9px;background:#1f3448;border-radius:3px;margin-top:4px}} .bar i{{display:block;height:9px;background:#2fb37a;border-radius:3px}}
 .st{{padding:4px 10px;border-radius:14px;font-weight:bold;font-size:18px;white-space:nowrap}}
@@ -171,9 +201,7 @@ tr.watch td.v{{border-left:5px solid #f2b84b}} tr.alert td.v{{border-left:5px so
 <div class="top"><h1><span>AGE</span>VESSEL BOARD</h1>
 <div class="u">Last updated <b>{e(u)}</b><br>Updates 09:00 · 12:00 · 15:00 (workdays) · page reloads every 5 min</div></div>
 {f'<div class="n">{e(notice)}</div>' if notice else ''}
-<div class="c"><div>Active<b>{sum(1 for v in vs if v.get("stage") != "Completed")}</b></div><div>Pre-arrival<b>{cnt("Pre-arrival")}</b></div>
-<div>Loading<b>{cnt("Loading")}</b></div><div>Sailing<b>{cnt("At sea")}</b></div><div>Discharging<b>{cnt("Discharging")}</b></div>
-<div>Completed<b>{cnt("Completed")}</b></div><div style="border-color:#ff5b5b">Attention<b>{len(attn)}</b></div></div>
+<div class="c"><div>Active<b>{sum(1 for v in vs if v.get("stage") != "Completed")}</b></div>{chips}<div style="border-color:#ff5b5b">Attention<b>{len(attn)}</b></div></div>
 <table><tr><th>Vessel / Route</th><th>Stage</th>{''.join(f'<th>{h}</th>' for h in HEAD)}<th>Cargo MT</th><th>Status</th><th>Remark</th></tr>
 {''.join(rows)}</table>
 <div class="bt"><div class="a">Needs attention: {attn_html}</div>
