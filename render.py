@@ -136,7 +136,7 @@ def main(src, dst):
     notice = st.get("notice") or ""
     page = f"""<!doctype html><html lang="th"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<meta http-equiv="refresh" content="300">
+<meta http-equiv="refresh" content="3600">
 <meta name="robots" content="noindex,nofollow">
 <title>AGE Vessel Board</title>
 <style>
@@ -180,7 +180,7 @@ tr.watch td.v{{border-left:5px solid #f2b84b}} tr.alert td.v{{border-left:5px so
 <div class="lo"><div class="lh">Lost time (hours)</div><table><tr><th style="text-align:left">Vessel</th><th>Shipper</th><th>Receiver</th><th>Owners</th><th>Weather</th><th>Deductible</th></tr>{lost_html}</table>
 <div class="lk">Shipper = load-port waiting, claim back-to-back · Receiver = counts in AGE laytime · Deductible = weather + owners' stoppage, not counted</div></div></div>
 <div class="f"><span class="est">Amber</span> = estimate · shaded = next milestone · port local time · source: agent / owners reports · Powered by Claude AI</div>
-</div></body></html>"""
+</div><script>window.BOARD_UPDATED_AT={json.dumps(upd)};</script><script src="live.js"></script></body></html>"""
     import re
     page = re.sub(r"(font-size|padding|gap|height|margin-top|margin-bottom|border-left|border-radius):([^;}]*)",
                   lambda m: m.group(1) + ":" + re.sub(r"(\d+(?:\.\d+)?)px", lambda n: f"{float(n.group(1))/19.2:.3f}vw", m.group(2)), page)
