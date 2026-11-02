@@ -65,8 +65,8 @@ def show_stage(v):
         if actual(v.get("eta_dp")) and not actual(v.get("comm_d")):
             return "Waiting Discharge"
         return "Laden" if (actual(v.get("comm_l")) or actual(v.get("etd_lp"))) else "Ballast"
-    if st == "Pre-arrival" and actual(v.get("eta_lp")):
-        return "Waiting Load"
+    if st == "Pre-arrival":
+        return "Waiting Load" if actual(v.get("eta_lp")) else "Ballast"
     return st or "—"
 
 
