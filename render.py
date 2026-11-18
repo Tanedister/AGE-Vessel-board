@@ -166,7 +166,7 @@ def main(src, dst):
     chips = "".join(f'<div>{k}<b>{shown.count(k)}</b></div>' for k in SHOW_ORDER if shown.count(k) or k in ("Loading", "Discharging"))
     page = f"""<!doctype html><html lang="th"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<meta http-equiv="refresh" content="300">
+<meta http-equiv="refresh" content="3600">
 <meta name="robots" content="noindex,nofollow">
 <title>AGE Vessel Board</title>
 <style>
@@ -199,7 +199,7 @@ tr.watch td.v{{border-left:5px solid #f2b84b}} tr.alert td.v{{border-left:5px so
 .f{{color:#7f94a8;font-size:16px;margin-top:8px}}
 </style></head><body><div class="w">
 <div class="top"><h1><span>AGE</span>VESSEL BOARD</h1>
-<div class="u">Last updated <b>{e(u)}</b><br>Updates hourly 09:00 – 17:00 (workdays) · page reloads every 5 min</div></div>
+<div class="u">Last updated <b>{e(u)}</b><br>Updates hourly 09:00 – 17:00 (workdays) · page reloads every 1 hr</div></div>
 {f'<div class="n">{e(notice)}</div>' if notice else ''}
 <div class="c"><div>Active<b>{sum(1 for v in vs if v.get("stage") != "Completed")}</b></div>{chips}<div style="border-color:#ff5b5b">Attention<b>{len(attn)}</b></div></div>
 <table><tr><th>Vessel / Route</th><th>Stage</th>{''.join(f'<th>{h}</th>' for h in HEAD)}<th>Cargo MT</th><th>Status</th><th>Remark</th></tr>
